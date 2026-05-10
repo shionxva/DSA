@@ -5,9 +5,7 @@
 using namespace std;
 const int MAX_SIZE = 101;
 
-struct BigInteger
-{
-    string ogNum;
+struct BigInteger{
     char digit[MAX_SIZE];
     //'123' -> digit  = 3 2 1 0 0 0
     int digitCount = 0;
@@ -21,7 +19,6 @@ struct BigInteger
     }
     
     BigInteger(const string& s){
-        ogNum = s;
         digitCount = s.length();
         for(int i=0; i<digitCount; i++){
             digit[i] = s[digitCount - i -1] -'0'; 
@@ -76,7 +73,7 @@ struct BigInteger
         }
 
         //multiple leading 0's case
-        if(sub.digitCount > 1 && sub.digit[sub.digitCount - 1] == 0){
+        while(sub.digitCount > 1 && sub.digit[sub.digitCount - 1] == 0){
             sub.digitCount--;
         }
 
@@ -100,7 +97,7 @@ struct BigInteger
         }
 
         //similar to subtraction
-        if(mul.digitCount > 1 && mul.digit[mul.digitCount - 1] == 0){
+        while(mul.digitCount > 1 && mul.digit[mul.digitCount - 1] == 0){
             mul.digitCount--;
         }
 
@@ -176,56 +173,143 @@ struct BigInteger
         return quotient;
     }
 
+    //op
+    BigInteger op(const BigInteger& other, char op){
+        BigInteger res;
+        if(op == '+'){
+            res = this->add(other);
+        }
+        if(op == '-'){
+            res = this->sub(other);
+        }
+        if(op == '*'){
+            res = this->mul(other);
+        }
+        if(op == '/'){
+            res = this->div(other);
+        }
+        return res;
+    }
+
 };
 
-// struct ExpressionParser(){
-//     // () first then factor then expression
-//     //expression := term { (+|-) term } term := factor { (*|/) factor } factor := number | '(' expression ')'
-// };
+struct Parser{
+
+    //expression := term { (+|-) term } term := factor { (*|/) factor } factor := number | '(' expression ')'
+    string s;
+    int pos = 0;
+    BigInteger result;
+
+    //constructor
+    Parser(const string& s){
+        this->s = s;
+        result = this->parseExpression();
+    };
+
+    BigInteger parseNumber()
+    {
+        string num = "";;
+
+        // Read consecutive digits
+        while(pos < s.length() && isdigit(s[pos])){
+            num += s[pos];
+            pos++;
+        }
+
+        if (num == ""){
+            cout<< "error number parser" << endl;
+            exit(1);
+        }
+
+        return BigInteger(num);
+    }
+
+    BigInteger parseExpression(){
+        // Parse the first term
+        BigInteger left = parseTerm();
+
+        // Continue while we see + or -
+        while(pos < s.length() && (s[pos] == '+' || s[pos] == '-')){
+            char op = s[pos];
+            pos++;
+
+            // Parse the next term
+            BigInteger right = parseTerm();
+
+            // Apply operation
+            left = left.op(right, op);
+        }
+        return left;
+    }
+
+    BigInteger parseTerm(){
+        // Parse the first factor
+        BigInteger left = parseFactor();
+
+        // Continue while we see + or -
+        while(pos < s.length() && (s[pos] == '*' || s[pos] == '/')){
+            char op = s[pos];
+            pos++;
+
+            // Parse the next term
+            BigInteger right = parseFactor();
+
+            // Apply operation
+            left = left.op(right, op);
+        }
+        return left;
+    }
+
+    BigInteger parseFactor(){
+        if(pos < s.length() && s[pos] == '('){
+            pos++; //skip start paren
+            BigInteger val = parseExpression();
+
+            if (pos >= s.length() || s[pos] != ')'){
+            cout<< "error factor parser" << endl;
+            exit(1);
+            }
+
+            pos++; //skip end paren
+            return val;
+        }
+        else{
+            return parseNumber();
+        }
+    }
+};
 
 int main()
 {
     ifstream fin("tests.txt");
 
-    string n1, n2;
-    char op;
+    // string n1, n2;
+    // char op;
 
-    while(fin >> n1 >> op >> n2)
-    {
-        BigInteger num1(n1);
-        BigInteger num2(n2);
+    // while(fin >> n1 >> op >> n2)
+    // {
+    //     BigInteger num1(n1);
+    //     BigInteger num2(n2);
 
-        num1.print();
-        cout << op << endl;
-        num2.print();
-        cout << "---------" << endl;
+    //     num1.print();
+    //     cout << op << endl;
+    //     num2.print();
+    //     cout << "---------" << endl;
 
-        if(op == '+'){
-            BigInteger sum = num1.add(num2);
-            sum.print();
-        }
-
-        if(op == '-'){
-            BigInteger sub = num1.sub(num2);
-            sub.print();
-        }
-        if(op == '*'){
-            BigInteger mul = num1.mul(num2);
-            mul.print();
-        }
-        if(op == '/'){
-            BigInteger div = num1.div(num2);
-            div.print();
-        }
-        cout << endl;
-    }
-
-    // string exp;
-    // while(getline(fin, exp)){
-    //     cout << exp << endl;
+    //     BigInteger result = num1.op(num2, op);
+    //     cout << endl;
     // }
 
-    // fin.close();
+    string exp;
+    while(getline(fin, exp)){
+        cout << exp << endl;
+        cout<< "-------:3--------" << endl;
+        Parser parse(exp);
+        parse.result.print();
+        cout<<endl;
+    }
+
+    fin.close();
 
     return 0;
 }
