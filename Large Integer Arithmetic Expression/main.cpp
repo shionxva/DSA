@@ -44,6 +44,32 @@ struct BigInteger{
         }
         out << endl;
     }
+
+    int compareABS(const BigInteger& other) const{
+        //compare len
+        if(digitCount > other.digitCount) return 1;
+        if(digitCount < other.digitCount) return -1;
+
+        //if same len compare most significant digit value
+        for(int i = digitCount - 1; i >= 0; i--){
+            if(digit[i] > other.digit[i]) return 1;
+            if(digit[i] < other.digit[i]) return -1;
+        }
+        return 0;
+    }
+
+    int compare(const BigInteger& other) const{
+        // positive > negative
+        if(!negative && other.negative) return 1;
+        // negative < positive
+        if(negative && !other.negative) return -1;
+        // both positive
+        if(!negative && !other.negative){
+            return compareABS(other);
+        }
+        // both negative then we reverse
+        return -compareABS(other);
+    }
     
     //arithmetics
     BigInteger add(const BigInteger& other) const{
@@ -90,7 +116,7 @@ struct BigInteger{
 
         for(int i = 0; i < digitCount; i++){
             int d1 = digit[i] - borrow;
-            int d2 = other.digit[i];
+            int d2 = (i < other.digitCount) ? other.digit[i] : 0;
 
             if(d1 < d2){
                 d1 += 10;
@@ -142,36 +168,11 @@ struct BigInteger{
         while(mul.digitCount > 1 && mul.digit[mul.digitCount - 1] == 0){
             mul.digitCount--;
         }
-
+        if (mul.digitCount == 1 && mul.digit[0] == 0) mul.negative = false;
         return mul;
     }
 
     //division
-    int compareABS(const BigInteger& other) const{
-        //compare len
-        if(digitCount > other.digitCount) return 1;
-        if(digitCount < other.digitCount) return -1;
-
-        //if same len compare most significant digit value
-        for(int i = digitCount - 1; i >= 0; i--){
-            if(digit[i] > other.digit[i]) return 1;
-            if(digit[i] < other.digit[i]) return -1;
-        }
-        return 0;
-    }
-
-    int compare(const BigInteger& other) const{
-        // positive > negative
-        if(!negative && other.negative) return 1;
-        // negative < positive
-        if(negative && !other.negative) return -1;
-        // both positive
-        if(!negative && !other.negative){
-            return compareABS(other);
-        }
-        // both negative then we reverse
-        return -compareABS(other);
-    }
 
     BigInteger div(const BigInteger& other) const{
         //div by 0 error
@@ -180,17 +181,17 @@ struct BigInteger{
             return BigInteger("0");
         }
 
+        BigInteger absThis = *this;   absThis.negative = false;
+        BigInteger absOther = other;  absOther.negative = false;
+
         BigInteger current;
         BigInteger quotient;
-        quotient.negative = (negative != other.negative);
 
         quotient.digitCount = 0;
 
-        for(int i = digitCount - 1; i >= 0; i--){
-
+        for(int i = absThis.digitCount - 1; i >= 0; i--){
             //bring digits from other down to current one by one
             //so we need current = current * 10 + newDigit
-
             for(int j = current.digitCount; j > 0; j--){
                 current.digit[j] = current.digit[j - 1];
             }
@@ -204,8 +205,8 @@ struct BigInteger{
 
             int qdigit = 0;
 
-            while(current.compare(other) >= 0){
-                current = current.sub(other);
+            while(current.compareABS(absOther) >= 0){
+                current = current.subABS(other);
                 qdigit++;
             }
 
@@ -223,6 +224,8 @@ struct BigInteger{
             quotient.digitCount--;
         }
 
+        quotient.negative = (negative != other.negative);
+        if (quotient.digitCount == 1 && quotient.digit[0] == 0) quotient.negative = false;
         return quotient;
     }
 
@@ -363,6 +366,7 @@ int main(int argc, char* argv[])
     
     ifstream fin(input_file);
     ofstream outFile(output_file);
+    if (!fin) { cerr << "cannot open " << input_file << "\n"; return 1; }
 
     string exp;
     while(getline(fin, exp)){
@@ -377,3 +381,4 @@ int main(int argc, char* argv[])
 
     return 0;
 }
+fixing bugs: infinite negative division, errors handling
