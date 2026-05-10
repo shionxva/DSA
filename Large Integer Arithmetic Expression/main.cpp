@@ -1,7 +1,8 @@
 #include <iostream>
 #include <fstream>
 #include <string>
-#include <math.h>
+#include <algorithm>
+#include <cctype> //handling whitespaces
 using namespace std;
 const int MAX_SIZE = 101;
 
@@ -26,10 +27,10 @@ struct BigInteger{
         for(int i=digitCount; i < MAX_SIZE; i++) digit[i] = 0;
     }
     
-    void print() const{
+    void print(ostream& out) const{
         for(int i = digitCount - 1; i >= 0; i--)
-            cout << (int)digit[i];
-        cout << endl;
+            out << (int)digit[i];
+        out << endl;
     }
     
     //arithmetics
@@ -193,9 +194,19 @@ struct BigInteger{
 
 };
 
-struct Parser{
+/*expression = 
+    term
+    | expression "+" term
+    | expression "-" term .
+term = 
+    factor
+    | term "*" factor
+    | term "/" factor .
+factor = 
+    number
+    | "(" expression ")" .*/
 
-    //expression := term { (+|-) term } term := factor { (*|/) factor } factor := number | '(' expression ')'
+struct Parser{
     string s;
     int pos = 0;
     BigInteger result;
@@ -279,36 +290,26 @@ struct Parser{
     }
 };
 
-int main()
+
+int main(int argc, char* argv[])
 {
-    ifstream fin("tests.txt");
-
-    // string n1, n2;
-    // char op;
-
-    // while(fin >> n1 >> op >> n2)
-    // {
-    //     BigInteger num1(n1);
-    //     BigInteger num2(n2);
-
-    //     num1.print();
-    //     cout << op << endl;
-    //     num2.print();
-    //     cout << "---------" << endl;
-
-    //     BigInteger result = num1.op(num2, op);
-    //     cout << endl;
-    // }
+    string file_name = argv[0];
+    string input_file  = argv[1];
+    string output_file = argv[2];
+    
+    ifstream fin(input_file);
+    ofstream outFile(output_file);
 
     string exp;
     while(getline(fin, exp)){
-        cout << exp << endl;
-        cout<< "-------:3--------" << endl;
+        exp.erase(remove_if(exp.begin(), exp.end(), [](unsigned char ch) { return isspace(ch); }), exp.end()); //remove whitespace
         Parser parse(exp);
-        parse.result.print();
-        cout<<endl;
+        parse.result.print(cout);
+        parse.result.print(outFile);
     }
 
+    
+    outFile.close();
     fin.close();
 
     return 0;
