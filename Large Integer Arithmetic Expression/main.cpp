@@ -6,6 +6,10 @@
 using namespace std;
 const int MAX_SIZE = 101;
 
+struct BigIntError {
+    string message;
+};
+
 struct BigInteger{
     char digit[MAX_SIZE];
     //'123' -> digit  = 3 2 1 0 0 0
@@ -152,6 +156,9 @@ struct BigInteger{
         BigInteger mul;
         mul.negative = (negative != other.negative);
         mul.digitCount = digitCount + other.digitCount;
+        if (mul.digitCount > MAX_SIZE) {
+            throw BigIntError{"result exceeds maximum digit size"};
+        }
 
         for(int i = 0; i < digitCount; i++){
             int carry = 0;
@@ -177,8 +184,7 @@ struct BigInteger{
     BigInteger div(const BigInteger& other) const{
         //div by 0 error
         if(other.digitCount== 1 && other.digit[0] == 0){
-            cout << "Error: division by zero" << endl;
-            return BigInteger("0");
+            throw BigIntError{"division by zero"};
         }
 
         BigInteger absThis = *this;   absThis.negative = false;
@@ -206,7 +212,7 @@ struct BigInteger{
             int qdigit = 0;
 
             while(current.compareABS(absOther) >= 0){
-                current = current.subABS(other);
+                current = current.subABS(absOther);
                 qdigit++;
             }
 
@@ -283,8 +289,7 @@ struct Parser{
         }
 
         if (num == ""){
-            cout<< "error number parser" << endl;
-            exit(1);
+            throw BigIntError{"number parser"};
         }
 
         return BigInteger(num);
@@ -344,8 +349,7 @@ struct Parser{
             BigInteger val = parseExpression();
 
             if (pos >= s.length() || s[pos] != ')'){
-            cout<< "error factor parser" << endl;
-            exit(1);
+                throw BigIntError{"factor parser"};
             }
 
             pos++; //skip end paren
@@ -366,19 +370,21 @@ int main(int argc, char* argv[])
     
     ifstream fin(input_file);
     ofstream outFile(output_file);
-    if (!fin) { cerr << "cannot open " << input_file << "\n"; return 1; }
+    if (!fin) { cerr << "Error: cannot open " << input_file << "\n"; return 1; }
 
     string exp;
-    while(getline(fin, exp)){
-        exp.erase(remove_if(exp.begin(), exp.end(), [](unsigned char ch) { return isspace(ch); }), exp.end()); //remove whitespace
-        Parser parse(exp);
-        parse.result.print(cout);
-        parse.result.print(outFile);
+    while (getline(fin, exp)) {
+        exp.erase(remove_if(exp.begin(), exp.end(),[](unsigned char ch){ return isspace(ch); }), exp.end());
+        try {
+            Parser parse(exp);
+            parse.result.print(cout);
+            parse.result.print(outFile);
+        } catch (const BigIntError& e) {
+            cout    << "Error: " << e.message << " from: " << exp << endl;
+            outFile << "Error: " << e.message << " from: " << exp << endl;
+        }
     }
-
     outFile.close();
     fin.close();
-
     return 0;
 }
-fixing bugs: infinite negative division, errors handling
