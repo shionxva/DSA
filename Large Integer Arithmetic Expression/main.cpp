@@ -10,49 +10,79 @@ struct BigInteger{
     char digit[MAX_SIZE];
     //'123' -> digit  = 3 2 1 0 0 0
     int digitCount = 0;
-
+    bool negative = false;
 
     BigInteger() { //default constructor to prevent garbage value :c
         digitCount = 1;
-
         for(int i = 0; i < MAX_SIZE; i++)
             digit[i] = 0;
     }
     
     BigInteger(const string& s){
-        digitCount = s.length();
-        for(int i=0; i<digitCount; i++){
-            digit[i] = s[digitCount - i -1] -'0'; 
+        int start = 0;
+        if(s[0] == '-'){
+            negative = true;
+            start = 1;
         }
-        for(int i=digitCount; i < MAX_SIZE; i++) digit[i] = 0;
+        digitCount = s.length() - start;
+
+        for(int i = 0; i < digitCount; i++){
+            digit[i] = s[s.length() - i - 1] - '0';
+        }
+
+        for(int i = digitCount; i < MAX_SIZE; i++){
+            digit[i] = 0;
+        }
     }
     
     void print(ostream& out) const{
-        for(int i = digitCount - 1; i >= 0; i--)
+        if(negative && !(digitCount == 1 && digit[0] == 0)){
+            out << "-";
+        }
+        for(int i = digitCount - 1; i >= 0; i--){
             out << (int)digit[i];
+        }
         out << endl;
     }
     
     //arithmetics
-    BigInteger add(const BigInteger& other){
+    BigInteger add(const BigInteger& other) const{
         BigInteger sum;
         int sumDigitCount = digitCount > other.digitCount ? digitCount : other.digitCount;
         sum.digitCount = sumDigitCount + 1;
         int car = 0;
-        for (int i = 0; i < sum.digitCount; i++){
-            int r = digit[i] + other.digit[i] + car;
-            sum.digit[i] = r % 10;
-            car = r / 10;
+
+        if(negative == other.negative){ //same sign
+            for (int i = 0; i < sum.digitCount; i++){
+                int r = digit[i] + other.digit[i] + car;
+                sum.digit[i] = r % 10;
+                car = r / 10;
+            }
+
+            //remove excess 0
+            if(sum.digit[sum.digitCount - 1] == 0){
+                sum.digitCount--;
+            }
+            sum.negative = negative;
+            if(sum.digitCount == 1 && sum.digit[0] == 0) sum.negative = false;
+            return sum;
         }
-        
-        //remove excess 0
-        if(sum.digit[sum.digitCount - 1] == 0){
-            sum.digitCount--;
+
+        else{//dif sign ( + - )
+            if(compareABS(other) >= 0){ //if this > other
+                sum = this->subABS(other);
+                sum.negative = negative;
+            }
+            else{
+                sum = other.subABS(*this);
+                sum.negative = other.negative;
+            }
+            if(sum.digitCount == 1 && sum.digit[0] == 0) sum.negative = false;
+            return sum;
         }
-        return sum;
     }
 
-    BigInteger sub(const BigInteger& other){
+    BigInteger subABS(const BigInteger& other) const{ //sub WITHOUT sign
         BigInteger sub;
         sub.digitCount = digitCount;
 
@@ -81,9 +111,20 @@ struct BigInteger{
         return sub;
     }
 
-    BigInteger mul(const BigInteger& other){
-        BigInteger mul;
+    BigInteger sub(const BigInteger& other) const {
+        BigInteger temp = other;
 
+        // flip sign of other
+        temp.negative = !temp.negative;
+
+        // now do addition
+        return this->add(temp);
+        //-5 - 3 -> -5 + (-3) use add instead since add already distinct sign
+    }
+
+    BigInteger mul(const BigInteger& other) const{
+        BigInteger mul;
+        mul.negative = (negative != other.negative);
         mul.digitCount = digitCount + other.digitCount;
 
         for(int i = 0; i < digitCount; i++){
@@ -106,9 +147,7 @@ struct BigInteger{
     }
 
     //division
-
-    int compare(const BigInteger& other) const{
-
+    int compareABS(const BigInteger& other) const{
         //compare len
         if(digitCount > other.digitCount) return 1;
         if(digitCount < other.digitCount) return -1;
@@ -118,11 +157,23 @@ struct BigInteger{
             if(digit[i] > other.digit[i]) return 1;
             if(digit[i] < other.digit[i]) return -1;
         }
-
         return 0;
     }
 
-    BigInteger div(const BigInteger& other){
+    int compare(const BigInteger& other) const{
+        // positive > negative
+        if(!negative && other.negative) return 1;
+        // negative < positive
+        if(negative && !other.negative) return -1;
+        // both positive
+        if(!negative && !other.negative){
+            return compareABS(other);
+        }
+        // both negative then we reverse
+        return -compareABS(other);
+    }
+
+    BigInteger div(const BigInteger& other) const{
         //div by 0 error
         if(other.digitCount== 1 && other.digit[0] == 0){
             cout << "Error: division by zero" << endl;
@@ -131,6 +182,7 @@ struct BigInteger{
 
         BigInteger current;
         BigInteger quotient;
+        quotient.negative = (negative != other.negative);
 
         quotient.digitCount = 0;
 
@@ -175,7 +227,7 @@ struct BigInteger{
     }
 
     //op
-    BigInteger op(const BigInteger& other, char op){
+    BigInteger op(const BigInteger& other, char op) const{
         BigInteger res;
         if(op == '+'){
             res = this->add(other);
@@ -272,6 +324,18 @@ struct Parser{
     }
 
     BigInteger parseFactor(){
+        // unary minus
+        if(pos < s.length() && s[pos] == '-'){
+            pos++;
+            BigInteger val = parseFactor();
+
+            // flip sign
+            if(!(val.digitCount == 1 && val.digit[0] == 0)){
+                val.negative = !val.negative;
+            }
+            return val;
+        }
+
         if(pos < s.length() && s[pos] == '('){
             pos++; //skip start paren
             BigInteger val = parseExpression();
@@ -308,7 +372,6 @@ int main(int argc, char* argv[])
         parse.result.print(outFile);
     }
 
-    
     outFile.close();
     fin.close();
 
