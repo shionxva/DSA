@@ -4,25 +4,26 @@
 #include <algorithm>
 #include <cctype> //handling whitespaces
 using namespace std;
-const int MAX_SIZE = 101;
+const int MAX_SIZE = 111;
 
 struct BigIntError {
     string message;
 };
 
-struct BigInteger{
+struct BigNum{
     char digit[MAX_SIZE];
     //'123' -> digit  = 3 2 1 0 0 0
     int digitCount = 0;
     bool negative = false;
+    int decimalPlaces = 0;
 
-    BigInteger() { //default constructor to prevent garbage value :c
+    BigNum() { //default constructor to prevent garbage value :c
         digitCount = 1;
         for(int i = 0; i < MAX_SIZE; i++)
             digit[i] = 0;
     }
     
-    BigInteger(const string& s){
+    BigNum(const string& s){
         int start = 0;
         if(s[0] == '-'){
             negative = true;
@@ -39,17 +40,31 @@ struct BigInteger{
         }
     }
     
-    void print(ostream& out) const{
-        if(negative && !(digitCount == 1 && digit[0] == 0)){
+    void print(ostream& out) const {
+        BigNum r = round();
+        if(r.negative && !(r.digitCount == 1 && r.digit[0] == 0))
             out << "-";
+
+        int intDigits = r.digitCount - r.decimalPlaces;
+
+        int trimmed = 0;
+        if (r.decimalPlaces > 0) {
+            while (trimmed < r.decimalPlaces && r.digit[trimmed] == 0)
+                trimmed++;
         }
-        for(int i = digitCount - 1; i >= 0; i--){
-            out << (int)digit[i];
+
+        for(int i = r.digitCount - 1; i >= trimmed; i--){
+            if (r.decimalPlaces > 0 && i == r.decimalPlaces - 1)
+                out << ".";
+            out << (int)r.digit[i];
         }
+
+        if (intDigits <= 0)
+            out << "0";
         out << endl;
     }
 
-    int compareABS(const BigInteger& other) const{
+    int compareABS(const BigNum& other) const{
         //compare len
         if(digitCount > other.digitCount) return 1;
         if(digitCount < other.digitCount) return -1;
@@ -62,7 +77,7 @@ struct BigInteger{
         return 0;
     }
 
-    int compare(const BigInteger& other) const{
+    int compare(const BigNum& other) const{
         // positive > negative
         if(!negative && other.negative) return 1;
         // negative < positive
@@ -74,17 +89,74 @@ struct BigInteger{
         // both negative then we reverse
         return -compareABS(other);
     }
+
+    static void align( BigNum& a, BigNum& b) {
+        int diff = a.decimalPlaces - b.decimalPlaces;
+
+        if (diff > 0) {
+            // b needs 'diff' more decimal digits (shift left = insert zeros at low end)
+            for (int i = b.digitCount + diff - 1; i >= diff; i--)
+                b.digit[i] = b.digit[i - diff];
+            for (int i = 0; i < diff; i++)
+                b.digit[i] = 0;
+            b.digitCount += diff;
+            b.decimalPlaces += diff;
+        } else if (diff < 0) {
+            diff = -diff;
+            for (int i = a.digitCount + diff - 1; i >= diff; i--)
+                a.digit[i] = a.digit[i - diff];
+            for (int i = 0; i < diff; i++)
+                a.digit[i] = 0;
+            a.digitCount += diff;
+            a.decimalPlaces += diff;
+        }
+    }
+
+    BigNum round() const {
+        BigNum r = *this;
+        if (r.decimalPlaces <= 2) return r;
+
+        // Check the third decimal digit (index decimalPlaces - 3)
+        int roundDigit = r.digit[r.decimalPlaces - 3];
+
+        // Truncate to 2 decimal places: shift digits down
+        int drop = r.decimalPlaces - 2;
+        for (int i = drop; i < r.digitCount; i++)
+            r.digit[i - drop] = r.digit[i];
+        for (int i = r.digitCount - drop; i < r.digitCount; i++)
+            r.digit[i] = 0;
+        r.digitCount -= drop;
+        r.decimalPlaces = 2;
+
+        if (roundDigit >= 5) {
+            int carry = 1;
+            for (int i = 0; i < r.digitCount && carry; i++) {
+                int s = r.digit[i] + carry;
+                r.digit[i] = s % 10;
+                carry = s / 10;
+            }
+            if (carry) {
+                r.digit[r.digitCount] = carry;
+                r.digitCount++;
+            }
+        }
+
+        if (r.digitCount == 1 && r.digit[0] == 0) r.negative = false;
+        return r;
+    }
     
     //arithmetics
-    BigInteger add(const BigInteger& other) const{
-        BigInteger sum;
-        int sumDigitCount = digitCount > other.digitCount ? digitCount : other.digitCount;
+    BigNum add(const BigNum& other) const{
+        BigNum sum;
+        BigNum a = *this, b = other;
+        align(a, b);  
+        int sumDigitCount = a.digitCount > b.digitCount ? a.digitCount : b.digitCount;
         sum.digitCount = sumDigitCount + 1;
         int car = 0;
 
-        if(negative == other.negative){ //same sign
+        if(negative == b.negative){ //same sign
             for (int i = 0; i < sum.digitCount; i++){
-                int r = digit[i] + other.digit[i] + car;
+                int r = a.digit[i] + b.digit[i] + car;
                 sum.digit[i] = r % 10;
                 car = r / 10;
             }
@@ -93,27 +165,29 @@ struct BigInteger{
             if(sum.digit[sum.digitCount - 1] == 0){
                 sum.digitCount--;
             }
-            sum.negative = negative;
+            sum.negative = a.negative;
+            sum.decimalPlaces = a.decimalPlaces;
             if(sum.digitCount == 1 && sum.digit[0] == 0) sum.negative = false;
             return sum;
         }
 
         else{//dif sign ( + - )
-            if(compareABS(other) >= 0){ //if this > other
-                sum = this->subABS(other);
-                sum.negative = negative;
+            if(a.compareABS(b) >= 0){ //if this > other
+                sum = a.subABS(b);
+                sum.negative = a.negative;
             }
             else{
-                sum = other.subABS(*this);
-                sum.negative = other.negative;
+                sum = b.subABS(a);
+                sum.negative = b.negative;
             }
             if(sum.digitCount == 1 && sum.digit[0] == 0) sum.negative = false;
+            sum.decimalPlaces = a.decimalPlaces;
             return sum;
         }
     }
 
-    BigInteger subABS(const BigInteger& other) const{ //sub WITHOUT sign
-        BigInteger sub;
+    BigNum subABS(const BigNum& other) const{ //sub WITHOUT sign
+        BigNum sub;
         sub.digitCount = digitCount;
 
         int borrow = 0;
@@ -141,8 +215,8 @@ struct BigInteger{
         return sub;
     }
 
-    BigInteger sub(const BigInteger& other) const {
-        BigInteger temp = other;
+    BigNum sub(const BigNum& other) const {
+        BigNum temp = other;
 
         // flip sign of other
         temp.negative = !temp.negative;
@@ -152,12 +226,12 @@ struct BigInteger{
         //-5 - 3 -> -5 + (-3) use add instead since add already distinct sign
     }
 
-    BigInteger mul(const BigInteger& other) const{
-        BigInteger mul;
+    BigNum mul(const BigNum& other) const{
+        BigNum mul;
         mul.negative = (negative != other.negative);
         mul.digitCount = digitCount + other.digitCount;
         if (mul.digitCount > MAX_SIZE) {
-            throw BigIntError{"result exceeds maximum digit size"};
+            throw BigIntError{"Error"};
         }
 
         for(int i = 0; i < digitCount; i++){
@@ -176,32 +250,40 @@ struct BigInteger{
             mul.digitCount--;
         }
         if (mul.digitCount == 1 && mul.digit[0] == 0) mul.negative = false;
+        mul.decimalPlaces = decimalPlaces + other.decimalPlaces;
         return mul;
     }
 
     //division
 
-    BigInteger div(const BigInteger& other) const{
+    BigNum div(const BigNum& other, int precision = 10) const{
         //div by 0 error
         if(other.digitCount== 1 && other.digit[0] == 0){
-            throw BigIntError{"division by zero"};
+            throw BigIntError{"Error"};
         }
 
-        BigInteger absThis = *this;   absThis.negative = false;
-        BigInteger absOther = other;  absOther.negative = false;
+        BigNum absThis = *this;   absThis.negative = false;
+        BigNum absOther = other;  absOther.negative = false;
+        align(absThis, absOther);
+        // now both have equal decimalPlaces, which cancel in division
+        absThis.decimalPlaces = 0;
+        absOther.decimalPlaces = 0;
 
-        BigInteger current;
-        BigInteger quotient;
+        BigNum current;
+        BigNum quotient;
 
         quotient.digitCount = 0;
+        int totalDigits = absThis.digitCount + precision;
 
-        for(int i = absThis.digitCount - 1; i >= 0; i--){
+        for(int i = absThis.digitCount - 1; i >= -precision; i--){
             //bring digits from other down to current one by one
             //so we need current = current * 10 + newDigit
             for(int j = current.digitCount; j > 0; j--){
                 current.digit[j] = current.digit[j - 1];
             }
-            current.digit[0] = digit[i];
+
+            // Bring down next digit (0 if we're in the decimal extension)
+            current.digit[0] = (i >= 0) ? absThis.digit[i] : 0;
             current.digitCount++;
 
             // remove leading zeros
@@ -231,13 +313,14 @@ struct BigInteger{
         }
 
         quotient.negative = (negative != other.negative);
+        quotient.decimalPlaces = precision;
         if (quotient.digitCount == 1 && quotient.digit[0] == 0) quotient.negative = false;
         return quotient;
     }
 
     //op
-    BigInteger op(const BigInteger& other, char op) const{
-        BigInteger res;
+    BigNum op(const BigNum& other, char op) const{
+        BigNum res;
         if(op == '+'){
             res = this->add(other);
         }
@@ -255,22 +338,10 @@ struct BigInteger{
 
 };
 
-/*expression = 
-    term
-    | expression "+" term
-    | expression "-" term .
-term = 
-    factor
-    | term "*" factor
-    | term "/" factor .
-factor = 
-    number
-    | "(" expression ")" .*/
-
 struct Parser{
     string s;
     int pos = 0;
-    BigInteger result;
+    BigNum result;
 
     //constructor
     Parser(const string& s){
@@ -278,7 +349,7 @@ struct Parser{
         result = this->parseExpression();
     };
 
-    BigInteger parseNumber()
+    BigNum parseNumber()
     {
         string num = "";;
 
@@ -289,15 +360,15 @@ struct Parser{
         }
 
         if (num == ""){
-            throw BigIntError{"number parser"};
+            throw BigIntError{"Error"};
         }
 
-        return BigInteger(num);
+        return BigNum(num);
     }
 
-    BigInteger parseExpression(){
+    BigNum parseExpression(){
         // Parse the first term
-        BigInteger left = parseTerm();
+        BigNum left = parseTerm();
 
         // Continue while we see + or -
         while(pos < s.length() && (s[pos] == '+' || s[pos] == '-')){
@@ -305,7 +376,7 @@ struct Parser{
             pos++;
 
             // Parse the next term
-            BigInteger right = parseTerm();
+            BigNum right = parseTerm();
 
             // Apply operation
             left = left.op(right, op);
@@ -313,9 +384,9 @@ struct Parser{
         return left;
     }
 
-    BigInteger parseTerm(){
+    BigNum parseTerm(){
         // Parse the first factor
-        BigInteger left = parseFactor();
+        BigNum left = parseFactor();
 
         // Continue while we see + or -
         while(pos < s.length() && (s[pos] == '*' || s[pos] == '/')){
@@ -323,7 +394,7 @@ struct Parser{
             pos++;
 
             // Parse the next term
-            BigInteger right = parseFactor();
+            BigNum right = parseFactor();
 
             // Apply operation
             left = left.op(right, op);
@@ -331,11 +402,11 @@ struct Parser{
         return left;
     }
 
-    BigInteger parseFactor(){
+    BigNum parseFactor(){
         // unary minus
         if(pos < s.length() && s[pos] == '-'){
             pos++;
-            BigInteger val = parseFactor();
+            BigNum val = parseFactor();
 
             // flip sign
             if(!(val.digitCount == 1 && val.digit[0] == 0)){
@@ -346,10 +417,10 @@ struct Parser{
 
         if(pos < s.length() && s[pos] == '('){
             pos++; //skip start paren
-            BigInteger val = parseExpression();
+            BigNum val = parseExpression();
 
             if (pos >= s.length() || s[pos] != ')'){
-                throw BigIntError{"factor parser"};
+                throw BigIntError{"Error"};
             }
 
             pos++; //skip end paren
@@ -380,8 +451,8 @@ int main(int argc, char* argv[])
             parse.result.print(cout);
             parse.result.print(outFile);
         } catch (const BigIntError& e) {
-            cout    << "Error: " << e.message << " from: " << exp << endl;
-            outFile << "Error: " << e.message << " from: " << exp << endl;
+            cout    << e.message << endl;
+            outFile << e.message << endl;
         }
     }
     outFile.close();
