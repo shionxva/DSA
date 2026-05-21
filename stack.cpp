@@ -156,7 +156,7 @@ public:
 
 int main() {
 
-    cout << "ArrayStack test\n";
+    cout << "ArrayStack test\n\n";
 
     ArrayStack s1;
 
@@ -176,6 +176,8 @@ int main() {
     s2.push(100);
     s2.push(200);
     s2.push(300);
+
+    cout<< "\nKeep in mind this array is being printed in reversed order..\n";
     s2.display();
 
     cout << "peek(): " << s2.peek() << endl;
