@@ -1,6 +1,7 @@
 #include <iostream>
 using namespace std;
 
+//===========Linked List===========
 struct NODE{
   int data;
   NODE* next;
@@ -189,16 +190,77 @@ int RemoveNode(LIST &l, int K) {
     return x;
 }
 
-
 //print
 void PrintList(LIST l){
     NODE* p = l.head;
-    while(p != NULL){
+    while(p != nullptr){
         cout << p->data << " ";
         p = p->next;
     }
 }
 
+//============SORT==============
+//selection sort -> choose smallest element
+NODE* FindMinprev(LIST l) {
+    NODE *min, *minprev, *p, *q;
+    minprev = q = nullptr;
+    min = p = l.head;
+    while(p != nullptr) {
+        if (p->data < min->data) {
+        min = p;
+        minprev = q;
+        }
+    q = p;
+    p = p->next;
+    }
+    return minprev;
+}
+
+void ListSelectionSort(LIST &l) {
+    LIST lResult;
+    NODE *min, *minprev;
+    lResult.head = lResult.tail = nullptr;
+    while(l.head != nullptr) {
+        minprev = FindMinprev(l);
+        min = PickAfter(l, minprev);
+        AddTail(lResult, min);
+    }
+    l = lResult;
+}
+
+//quick sort
+void LISTAppend (LIST &list, LIST &list2){
+    if (list2.head == nullptr) return;
+    if(list.head == nullptr)
+        list = list2;
+    else{
+        list.tail->next = list2.head;
+        list.tail = list2.tail;
+    }
+    Init(list2);
+}
+
+void ListQuickSort (LIST &list) {
+    NODE *X, *p;
+    LIST list1, list2;
+    if(list.head == list.tail) return;
+    Init(list1);
+    Init(list2);
+    
+    X = PickHead(list);
+    while(list.head != nullptr) {
+        p = PickHead(list);
+        if (p->data <= X->data)
+            AddTail(list1, p);
+        else
+            AddTail(list2, p);
+    }
+    ListQuickSort(list1);
+    ListQuickSort(list2);
+    LISTAppend(list, list1);
+    AddTail(list, X);
+    LISTAppend(list, list2);
+}
 
 int main(){
     LIST l;
@@ -231,6 +293,23 @@ int main(){
     cout<<"\n\nK = 25";
     cout<< "\nK's" <<"\n-Address: "<< p3 <<"\n-Value: "<< p3->data << endl;
     PrintList(l);    
+    
+    LIST l2;
+    Init(l2);
+    InsertHead(l2, 7);InsertHead(l2, 2);InsertHead(l2, 1);InsertHead(l2, 5);InsertHead(l2, 3);InsertHead(l2, 6);InsertHead(l2, 19);InsertHead(l2, 9);
+    cout<< "\n\nLL Before sorting: ";
+    PrintList(l2);
+    
+    ListSelectionSort(l2);
+    cout<< "\nLL After selection sort: ";
+    PrintList(l2);
+    
+    LIST l3;
+    Init(l3);;
+    InsertHead(l3, 7);InsertHead(l3, 2);InsertHead(l3, 1);InsertHead(l3, 5);InsertHead(l3, 3);InsertHead(l3, 6);InsertHead(l3, 19);InsertHead(l3, 9);
+    ListSelectionSort(l3);
+    cout<< "\nLL After quick sort: ";
+    PrintList(l3);
     
     return 0;
 }
