@@ -116,6 +116,30 @@ NODE* InsertBefore(LIST &l, NODE* q, int x){
     return new_e;
 }
 
+
+//extracting head (and remove)
+NODE* PickHead(LIST &l) {
+    NODE *p = nullptr;
+    if (l.head != nullptr) {
+        p = l.head; // p is the node to be extracted
+        l.head = l.head->next; // Detach p from the list
+        p->next = nullptr;
+        
+        if(l.head == nullptr)
+            l.tail = nullptr; // The list is now empty
+    }
+    return p;
+}
+
+int RemoveHead(LIST &l){
+    if (l.head == nullptr)
+        return -1;
+    NODE* p = PickHead(l);
+    int x = p->data;
+    delete p;
+    return x;
+}
+
 //print
 void PrintList(LIST l){
     NODE* p = l.head;
@@ -133,10 +157,20 @@ int main(){
     NODE* A = InsertHead(l, 10);
     NODE* B = InsertTail(l, 20);
     NODE* C = InsertTail(l, 30);
+    cout<<"Initial list: ";
+    PrintList(l);
     //A -> B -> C
+    
+    cout<<"\nInsert new elements: ";
     NODE* D = InsertBefore(l, B, 15); //then A -> D -> B -> C
     NODE* E = InsertAfter(l, B, 25); //and A -> D -> B -> E -> C
+    PrintList(l);
     
+    cout<<"\n\nExtracted elements: ";
+    NODE* p = PickHead(l);
+    cout<< "\nHead's" <<"\n-Address: "<< p <<"\n-Value: "<< p->data << endl;
+    RemoveHead(l);
+    cout<<"\nRemoved head -> new list: ";
     PrintList(l);
     
     return 0;
