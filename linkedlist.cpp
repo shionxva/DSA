@@ -116,7 +116,7 @@ NODE* InsertBefore(LIST &l, NODE* q, int x){
     return new_e;
 }
 
-
+//while pick only extract the node, remove delete them from the list
 //extracting head (and remove)
 NODE* PickHead(LIST &l) {
     NODE *p = nullptr;
@@ -139,6 +139,56 @@ int RemoveHead(LIST &l){
     delete p;
     return x;
 }
+
+//extract after a NODE (and delete)
+NODE* PickAfter(LIST &l, NODE* q){
+    NODE* p;
+    if(q!= nullptr){
+        p = q->next;
+        if(p!= nullptr){
+            if(p == l.tail){
+                l.tail = q;
+            }
+            q->next = p->next;
+            p->next = nullptr;
+        }
+    }
+    else
+        p = PickHead(l);
+    return p;
+}
+
+int RemoveAfter(LIST &l, NODE *q) {
+    NODE *p = PickAfter(l, q);
+    if (p == nullptr)
+        return -1;
+    int x = p->data;
+    delete p;
+    return x;
+}
+
+//extract NODE with data k (and delete)
+NODE* PickNode(LIST &l, int K) {
+    NODE *p = l.head, *q = nullptr;
+    // Find node p with key K and the node q before it.
+    while ((p != nullptr) && (p->data != K)) {
+        q = p;
+        p = p->next;
+    }
+    if (p == nullptr) // Report that key K is not found.
+    return nullptr;
+    return PickAfter(l, q); // Key K is found
+}
+
+int RemoveNode(LIST &l, int K) {
+    NODE *p = PickNode(l, K);
+    if (p == nullptr)
+        return -1;
+    int x = p->data;
+    delete p;
+    return x;
+}
+
 
 //print
 void PrintList(LIST l){
@@ -164,14 +214,23 @@ int main(){
     cout<<"\nInsert new elements: ";
     NODE* D = InsertBefore(l, B, 15); //then A -> D -> B -> C
     NODE* E = InsertAfter(l, B, 25); //and A -> D -> B -> E -> C
+    InsertTail(l, 40);
+    InsertTail(l, 50);
     PrintList(l);
     
     cout<<"\n\nExtracted elements: ";
     NODE* p = PickHead(l);
     cout<< "\nHead's" <<"\n-Address: "<< p <<"\n-Value: "<< p->data << endl;
-    RemoveHead(l);
-    cout<<"\nRemoved head -> new list: ";
     PrintList(l);
+    
+    NODE* p2 = PickAfter(l, C);
+    cout<< "\n\nAfter 30's" <<"\n-Address: "<< p2 <<"\n-Value: "<< p2->data << endl;
+    PrintList(l);
+    
+    NODE* p3 = PickNode(l, 25);
+    cout<<"\n\nK = 25";
+    cout<< "\nK's" <<"\n-Address: "<< p3 <<"\n-Value: "<< p3->data << endl;
+    PrintList(l);    
     
     return 0;
 }
