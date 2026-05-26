@@ -1,28 +1,32 @@
 #include <iostream>
 #include <vector>
 #include <queue>
+#include <algorithm>
 using namespace std;
 
 const int MAX_SIZE = 100001;
-int n,m,s;
+int n,m,s,e;
 vector<pair<int,int>> adj[MAX_SIZE]; //adjacency list: node -> vector of (neighbor, weight)
 
 void input(){
-    cin >> n >> m >> s;
+    cin >> n >> m >> s >> e;
     for(int i=0; i<m; i++){
         int u,v,w;
         cin >> u >> v >> w;
         adj[u].push_back({v,w});
-        //adj[v].push_back({u,w});  Assuming it's an undirected graph. Remove this line if it's directed.
+        adj[v].push_back({u,w});  //Assuming it's an undirected graph. Remove this line if it's directed.
     }
 }
 
 
 const int INF = 1e9;
-void dijkstra(int start){
+int previous[MAX_SIZE]; //to store the previous node in the shortest path
+
+void dijkstra(int start, int end){
     //initialize distance vector
     vector<long long> d(n + 1, INF);
     d[start] = 0;
+    previous[start] = start; //start node has no previous node
     //priority_queue<T, Container, Compare>
     priority_queue<pair<int,int>, vector<pair<int,int>>, greater<pair<int ,int>>> Q;
     //{current shortest distance, node}
@@ -41,19 +45,32 @@ void dijkstra(int start){
             if(d[u] + weight < d[v]){
                 d[v] = d[u] + weight;
                 Q.push({d[v], v});
+                previous[v] = u; //update the previous node for v
             }
         }
     }
-    for(int i=1; i<=n; i++){
-        if(d[i] == INF) cout << "INF\n";
-        else cout << d[i] << "\n";
+    cout<< "Path from " << start << " to " << end << " cost: " << d[end] << endl; //print the shortest distance to the end node
+    vector<int> path;
+    while (1){
+        path.push_back(end);
+        end = previous[end];
+        if (end == start) {
+            path.push_back(start);
+            break;
+        }
     }
+
+    reverse(path.begin(), path.end()); 
+    for (int x : path) {
+        cout << x << " ";
+    }
+    cout << endl;
 }
 
 int main() {
     freopen("input.txt", "r", stdin);
     freopen("output.txt", "w", stdout);
     input();
-    dijkstra(s); // Assuming we want to find shortest paths from node 1
+    dijkstra(s, e); // Assuming we want to find shortest paths from node s to node e
     return 0;
 }
