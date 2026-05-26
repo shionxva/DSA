@@ -12,10 +12,10 @@ const int MAX_SIZE = 100001;
 map<char, vector<pair<char,int>>> adj; //adjacency list: node -> vector of (neighbor, weight)
 const int INF = 1e9;
 
-pair<map<char, char>, map<char, long long>> dijkstra(char start, map<char, vector<pair<char,int>>> adj, map<char, int> wait_times){
+pair<map<char, char>, map<char, int>> dijkstra(char start, map<char, vector<pair<char,int>>> adj, map<char, int> wait_times){
     map<char, char> previous;
     //initialize distance vector
-    map<char, long long> d;
+    map<char, int> d;
     for(auto& x : adj){
         d[x.first] = INF;
         previous[x.first] = ' ';
@@ -23,18 +23,17 @@ pair<map<char, char>, map<char, long long>> dijkstra(char start, map<char, vecto
     d[start] = 0;
     previous[start] = start;
     //priority_queue<T, Container, Compare>
-    priority_queue<pair<long long, char>, vector<pair<long long, char>>, greater<pair<long long, char>>> Q;
+    priority_queue<pair<int, char>, vector<pair<int, char>>, greater<pair<int, char>>> Q;
     //{current shortest distance, node}
     Q.push({0, start});
 
     while(!Q.empty()){
-        //from priority queue pick the pair with the smallest distance
-        pair<long long, char> top = Q.top(); Q.pop();
+        pair<int, char> top = Q.top(); Q.pop();
         char u = top.second;
-        long long dist = top.first;
-        if(dist > d[u]) continue; //if the distance is greater than the current distance, skip
+        int dist = top.first;
+        if(dist > d[u]) continue;
         //relaxation: from adjacent list find the adjacent nodes and update their distances
-        for( auto it : adj[u]){
+        for(auto it : adj[u]){
             char v = it.first;
             int weight = it.second;
             int cost = d[u] + weight; //total cost to reach v from u
@@ -132,9 +131,9 @@ int main(int argc, char* argv[]) {
             }
         }
 
-        pair<map<char,char>, map<char,long long>> result = dijkstra('A', adj, wait_times);
+        pair<map<char,char>, map<char,int>> result = dijkstra('A', adj, wait_times);
         map<char,char> solution = result.first;
-        map<char,long long> d = result.second;
+        map<char,int> d = result.second;
         cout << d['G'] << endl;
         fout << d['G'] << endl;
         vector<char> path = shortest_path(solution, 'A', 'G');
